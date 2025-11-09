@@ -13,4 +13,3 @@ def find_executable(command: str, paths: list[str]) -> str | None:
         if check_executable(full_path):
             return full_path
     return None
-
