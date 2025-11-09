@@ -1,10 +1,11 @@
 from abc import ABC, abstractmethod
 from typing import Final
 import os
+from typing import Any
 import sys
 
-from .utils import CommandKwargs, find_executable
-from .constants import BUILT_IN_COMMANDS, ReturnCode
+from app.utils import CommandKwargs, find_executable
+from app.constants import BUILT_IN_COMMANDS, ReturnCode
 
 class ShellCommand(ABC):
     _args: Final[list]
@@ -23,32 +24,35 @@ class ShellCommand(ABC):
         return self._command_kwargs
 
     @abstractmethod
-    def execute(self) -> ReturnCode:
+    def execute(self) -> tuple[ReturnCode, Any]:
         pass
 
 
 class Echo(ShellCommand):
     def execute(self) -> ReturnCode:
-        sys.stdout.write(" ".join(self.args[1:]) + "\n")
-        return ReturnCode.SUCCESS
+        return ReturnCode.SUCCESS, " ".join(self.args[1:]) + "\n"
 
 class BuiltIn(ShellCommand):
     def execute(self) -> ReturnCode:
         if self._args[1] in BUILT_IN_COMMANDS:
-            sys.stdout.write(f"{self.args[1]} is a shell builtin\n")
-            return ReturnCode.SUCCESS
+            return ReturnCode.SUCCESS, f"{self.args[1]} is a shell builtin\n"
         else:
             executable_path = find_executable(self.args[1], self.command_kwargs.paths)
             if executable_path:
-                sys.stdout.write(f"{self.args[1]} is {executable_path}\n")
-                return ReturnCode.SUCCESS
-        sys.stdout.write(f"{self.args[1]}: not found\n")
-        return ReturnCode.SUCCESS
+                return ReturnCode.SUCCESS, f"{self.args[1]} is {executable_path}\n"
+        return ReturnCode.SUCCESS, f"{self.args[1]}: not found\n"
     
 class PWD(ShellCommand):
     def execute(self) -> ReturnCode:
-        sys.stdout.write(os.getcwd() + "\n")
-        return ReturnCode.SUCCESS
+        return ReturnCode.SUCCESS, os.getcwd() + "\n"
     
 class CD(ShellCommand):
-    pass
+    def execute(self) -> ReturnCode:
+        try:
+            os.chdir(os.path.expanduser(self.args[1]) if self.args[1]=="~" else self.args[1])
+        except FileNotFoundError:
+            return ReturnCode.FAILURE, f"cd: {self.args[1]}: No such file or directory\n"
+        return ReturnCode.SUCCESS, None
+
+#  sys.stdout.write
+# sys.stderr.write
